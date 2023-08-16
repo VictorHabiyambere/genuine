@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:ads="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#74A8D5"
+    tools:context=".FirstView">
+
+    <LinearLayout
+        android:id="@+id/linearLayout9"
+        android:layout_width="392dp"
+        android:layout_height="71dp"
+        android:orientation="horizontal"
+        ads:layout_constraintEnd_toEndOf="parent"
+        ads:layout_constraintHorizontal_bias="0.573"
+        ads:layout_constraintStart_toStartOf="parent"
+        ads:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/textView5"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:text="Genuine"
+            android:textSize="65sp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linearLayout8"
+        android:layout_width="377dp"
+        android:layout_height="55dp"
+        android:layout_marginTop="44dp"
+        android:layout_marginBottom="40dp"
+        android:orientation="horizontal"
+        ads:layout_constraintBottom_toTopOf="@+id/linearLayout11"
+        ads:layout_constraintEnd_toEndOf="@+id/linearLayout9"
+        ads:layout_constraintStart_toStartOf="@+id/linearLayout9"
+        ads:layout_constraintTop_toBottomOf="@+id/linearLayout9">
+
+        <EditText
+            android:id="@+id/editTextText4"
+            android:layout_width="646dp"
+            android:layout_height="match_parent"
+            android:ems="10"
+            android:freezesText="true"
+            android:hint="Enter Username"
+            android:inputType="text"
+            android:minHeight="48dp"
+            android:visibility="gone"
+            tools:layout_editor_absoluteX="-58dp"
+            tools:layout_editor_absoluteY="318dp" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/linearLayout11"
+        android:layout_width="411dp"
+        android:layout_height="47dp"
+        android:layout_marginTop="12dp"
+        android:orientation="horizontal"
+        ads:layout_constraintEnd_toEndOf="parent"
+        ads:layout_constraintHorizontal_bias="0.595"
+        ads:layout_constraintStart_toStartOf="parent"
+        ads:layout_constraintTop_toBottomOf="@+id/linearLayout8">
+
+        <Button
+            android:id="@+id/button5"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/messagebox"
+            android:backgroundTint="#FD1313"
+            android:onClick="get_username"
+            android:text="Submit"
+            android:visibility="gone"
+            tools:layout_editor_absoluteX="-39dp"
+            tools:layout_editor_absoluteY="505dp" />
+    </LinearLayout>
+
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/adView"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="45dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="46dp"
+        android:layout_marginBottom="8dp"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-8263919828062957/1157262551"
+        ads:layout_constraintBottom_toTopOf="@+id/adView4"
+        ads:layout_constraintEnd_toEndOf="parent"
+        ads:layout_constraintHorizontal_bias="0.502"
+        ads:layout_constraintStart_toStartOf="parent"
+        ads:layout_constraintTop_toBottomOf="@+id/linearLayout11" />
+
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/adView4"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="45dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="46dp"
+        android:layout_marginBottom="13dp"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-8263919828062957/5982213823"
+        ads:layout_constraintBottom_toTopOf="@+id/adView2"
+        ads:layout_constraintEnd_toEndOf="parent"
+        ads:layout_constraintStart_toStartOf="parent"
+        ads:layout_constraintTop_toBottomOf="@+id/adView" />
+
+    <com.google.android.gms.ads.AdView
+        android:id="@+id/adView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="45dp"
+        android:layout_marginTop="13dp"
+        android:layout_marginEnd="46dp"
+        android:layout_marginBottom="3dp"
+        ads:adSize="BANNER"
+        ads:adUnitId="ca-app-pub-8263919828062957/6218017542"
+        ads:layout_constraintBottom_toBottomOf="parent"
+        ads:layout_constraintEnd_toEndOf="parent"
+        ads:layout_constraintStart_toStartOf="parent"
+        ads:layout_constraintTop_toBottomOf="@+id/adView4" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

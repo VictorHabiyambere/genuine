@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "67748112438",
+    "firebase_url": "https://genuine-a483a-default-rtdb.firebaseio.com",
+    "project_id": "genuine-a483a",
+    "storage_bucket": "genuine-a483a.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:67748112438:android:3928e0d53e12ced108d097",
+        "android_client_info": {
+          "package_name": "com.surebuddy.genuine"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "67748112438-hb30jk9gafk8e0dpkkd1cbraq12g4l1v.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyArd9pZoV96Mfz6IzaQBzRCgABth_6gXvg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "67748112438-hb30jk9gafk8e0dpkkd1cbraq12g4l1v.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
