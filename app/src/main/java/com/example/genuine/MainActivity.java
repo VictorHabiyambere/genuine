@@ -64,8 +64,7 @@ public class MainActivity extends AppCompatActivity {
     private static final int PICK_VIDEO = 1;
     /*
     Progress today
-
-    What "Genuine" should do in the far future, when I master every other feature
+    What "Genuine"` should do in the far future, when I master every other feature
     "Genuine" should be able to detect if the AI is overfitting, and minimize it's
     overfitting(can probably be done in the near future)
     "Genuine" should be able to use quantum computing to perform database search exponentially faster than traditional methods!
@@ -149,7 +148,7 @@ public class MainActivity extends AppCompatActivity {
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
         final Handler handler = new Handler();
         String[] message_sent1 = new String[1];
-        LinearLayout linearLayout = (LinearLayout) findViewById(R.id.linearLayout5);
+        LinearLayout linearLayout = findViewById(R.id.linearLayout5);
         final boolean[] not_found = {true};
         String[] username1 = {""};
         String[] username2 = {""};
@@ -192,7 +191,7 @@ public class MainActivity extends AppCompatActivity {
                                 DatabaseReference mDatabase3 = FirebaseDatabase.getInstance().getReference();
                                 actual_trustability += trustability;
                                 mDatabase3.child("Trustability Levels").child(username2[0]).setValue(actual_trustability / messages_sent);
-                                LinearLayout linearLayout = (LinearLayout) findViewById(R.id.linearLayout5);
+                                LinearLayout linearLayout = findViewById(R.id.linearLayout5);
                                 TextView display = new TextView(getApplicationContext());
                                 display.setText(message_sent1[0]);
                                 mDatabase.child("Dataset").child("Response " + username2[0]).setValue(message_sent1[0]);
@@ -243,7 +242,7 @@ public class MainActivity extends AppCompatActivity {
                                 DatabaseReference mDatabase3 = FirebaseDatabase.getInstance().getReference();
                                 mDatabase3.child("Trustability Levels").child(username2[0]).setValue(actual_trustability / messages_sent);
 
-                                LinearLayout linearLayout = (LinearLayout) findViewById(R.id.linearLayout5);
+                                LinearLayout linearLayout = findViewById(R.id.linearLayout5);
                                 TextView display = new TextView(getApplicationContext());
                                 display.setText(message_sent1[0]);
                                 mDatabase.child("Dataset").child("Response " + username1[0]).setValue(message_sent1[0]);
@@ -419,7 +418,7 @@ public class MainActivity extends AppCompatActivity {
         sort(users);
         String setup = users[0] + " messaging " + users[1];
         //Send the sent message to the real-time database
-        LinearLayout linearLayout = (LinearLayout) findViewById(R.id.linearLayout5);
+        LinearLayout linearLayout = findViewById(R.id.linearLayout5);
         TextView display = new TextView(getApplicationContext());
         display.setText(message_sent);
         Drawable d = new Drawable() {
@@ -546,7 +545,7 @@ public class MainActivity extends AppCompatActivity {
                 return v;
             }
         };
-        ListView FriendsList = (ListView) findViewById(R.id.ItemList2);
+        ListView FriendsList = findViewById(R.id.ItemList2);
         FriendsList.setAdapter(adapter);
         state = !state;
 
