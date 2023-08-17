@@ -218,6 +218,8 @@ public class MainLobby extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         getSupportActionBar().hide();
         setContentView(R.layout.activity_main_lobby);
+        Intent intent = getIntent();
+        username1 = intent.getStringExtra("Username:");
         scaled_val = -1f;
         max_trust_value = 0;
         FirebaseApp.initializeApp(this);

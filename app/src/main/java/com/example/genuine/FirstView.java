@@ -149,6 +149,7 @@ public class FirstView extends AppCompatActivity {
             mDatabase.child("Users").child(usernameID).setValue(username_chosen);
             username1 = username_chosen;
             Intent intent = new Intent(this, MainLobby.class);
+            intent.putExtra("Username:", username1);
             startActivity(intent);
         }
 
