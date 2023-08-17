@@ -55,6 +55,7 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Dictionary;
+import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -553,9 +554,10 @@ public class MainLobby extends AppCompatActivity {
 
                                 //Make sure to not be able to friend oneself
                                 if (!child.getKey().equals(usernameID)) {
-
-                                    arr1.add((String) child.getValue());
-                                    arr4.add((String) child.getKey());
+                                    if (!(child.getValue() instanceof HashMap)) {
+                                        arr1.add((String) child.getValue());
+                                        arr4.add((String) child.getKey());
+                                    }
                                 }
                                 if (arr1 == null || arr1.size() == 0) {
                                     return;
