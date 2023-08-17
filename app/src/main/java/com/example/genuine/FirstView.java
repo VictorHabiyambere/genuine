@@ -32,7 +32,7 @@ import com.google.firebase.database.ValueEventListener;
 
 public class FirstView extends AppCompatActivity {
 
-    public static String username1 = "";
+    public static String username1;
 
     public static MediaPlayer button_sound = new MediaPlayer();
 
@@ -40,6 +40,7 @@ public class FirstView extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getSupportActionBar().hide();
         MobileAds.initialize(this, initializationStatus -> {
         });
         FirebaseApp.initializeApp(this);
@@ -67,15 +68,6 @@ public class FirstView extends AppCompatActivity {
             isLogged_in(user_list);
         }
     }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        //Sign-out the user
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        mAuth.signOut();
-    }
-
     public void isLogged_in(DatabaseReference mDatabase) {
 
         final Handler handler = new Handler();
@@ -88,8 +80,19 @@ public class FirstView extends AppCompatActivity {
                     @Override
                     public void onDataChange(DataSnapshot dataSnapshot) {
 
-                        if (dataSnapshot.exists()) {
-                            not_found[0] = false;
+                        if (!dataSnapshot.exists()) {
+                            setContentView(R.layout.activity_first_view);
+                            Button button = findViewById(R.id.button5);
+                            EditText editText = (EditText) findViewById(R.id.editTextText4);
+                            editText.setVisibility(VISIBLE);
+                            button.setVisibility(VISIBLE);
+                            return;
+                        }
+
+                        not_found[0] = false;
+                        if (!not_found[0]) {
+                            Intent intent = new Intent(FirstView.this, MainLobby.class);
+                            startActivity(intent);
                         }
 
                     }
@@ -100,21 +103,7 @@ public class FirstView extends AppCompatActivity {
                     }
                 });
                 handler.post(this);
-                if (!not_found[0]) {
-                    Intent intent = new Intent(FirstView.this, MainLobby.class);
-                    startActivity(intent);
-                    handler.post(this);
-                    handler.removeCallbacks(this);
-                } else {
-                    setContentView(R.layout.activity_first_view);
-                    Button button = findViewById(R.id.button5);
-                    EditText editText = (EditText) findViewById(R.id.editTextText4);
-                    editText.setVisibility(VISIBLE);
-                    button.setVisibility(VISIBLE);
-                    handler.post(this);
-                    handler.removeCallbacks(this);
-                }
-
+                handler.removeCallbacks(this);
             }
         });
     }
@@ -128,7 +117,9 @@ public class FirstView extends AppCompatActivity {
         button_sound = MediaPlayer.create(this, R.raw.select);
 
         button_sound.start();
-        button_sound.release();
+        if (!button_sound.isPlaying()) {
+            button_sound.release();
+        }
 
         //How this will integrate with everything else, is that there will be a layer of abstraction
         //Users who log-into the app will have a username they have chosen for themselves

@@ -55,7 +55,6 @@ import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Dictionary;
-import java.util.HashMap;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -88,7 +87,6 @@ class OnSwipeTouchListener extends AppCompatActivity implements View.OnTouchList
 
     public void onSwipeRight(int pos) {
         //Do what you want after swiping left to right
-        TextView display = findViewById(R.id.textView3);
         matching = p.matcher(request_sent);
         String who = getName(request_sent, 7);
         //The sender gets a notice that the user has rejected their request sent to them
@@ -98,13 +96,11 @@ class OnSwipeTouchListener extends AppCompatActivity implements View.OnTouchList
         mDatabase.child("Users").child(usernameID).child("Requested").removeValue();
         mDatabase2.child(request_sentID).child("Rejection").setValue(who);
         //Once this information is extracted, the proper prompt will be generated
-        display.setVisibility(GONE);
     }
 
     public void onSwipeLeft(int pos) {
 
         //Do what you want after swiping right to left
-        TextView display = findViewById(R.id.textView3);
         matching = p.matcher(request_sent);
         String who = getName(request_sent, 7);
         //The sender gets a notice that the user has rejected their request sent to them
@@ -114,7 +110,6 @@ class OnSwipeTouchListener extends AppCompatActivity implements View.OnTouchList
         mDatabase.child("Users").child(usernameID).child("Requested").removeValue();
         mDatabase2.child(request_sentID).child("Rejection").setValue(who);
         //Once this information is extracted, the proper prompt will be generated
-        display.setVisibility(GONE);
     }
 
     private final class GestureListener extends GestureDetector.SimpleOnGestureListener {
@@ -155,9 +150,9 @@ public class MainLobby extends AppCompatActivity {
 
     public static Module module;
 
-    public static float scaled_val = -1f;
+    public static float scaled_val;
 
-    public static float accuracy = 1;
+    public static float accuracy;
 
     public static String receiver;
 
@@ -172,6 +167,10 @@ public class MainLobby extends AppCompatActivity {
 
     public static ArrayList<Float> arr6 = new ArrayList<Float>();
 
+    public static ArrayList<String> arr7 = new ArrayList<>();
+
+    public static ArrayList<String> arr8 = new ArrayList<>();
+
     public static Button accept;
 
     public static Button decline;
@@ -180,7 +179,7 @@ public class MainLobby extends AppCompatActivity {
 
     public static String request_sentID;
 
-    public static float max_trust_value = 0;
+    public static float max_trust_value;
 
 
     //It's patterns all the way down...
@@ -217,7 +216,10 @@ public class MainLobby extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getSupportActionBar().hide();
         setContentView(R.layout.activity_main_lobby);
+        scaled_val = -1f;
+        max_trust_value = 0;
         FirebaseApp.initializeApp(this);
         MobileAds.initialize(this, new OnInitializationCompleteListener() {
             @Override
@@ -278,8 +280,7 @@ public class MainLobby extends AppCompatActivity {
                         //Use the list position
                         ListAdapter adapter1 = listview3.getAdapter();
                         String user_to_connect = adapter1.getItem(position).toString();
-                        request_sentID = arr4.get(position);
-                        TextView display = findViewById(R.id.textView3);
+                        request_sentID = arr7.get(position);
                         LinearLayout layout1 = findViewById(R.id.linearLayout3);
 
                         //Add the user to the list of people it can contact
@@ -303,7 +304,6 @@ public class MainLobby extends AppCompatActivity {
                         //Extract the username associated with a user ID
                         accept.setVisibility(GONE);
                         decline.setVisibility(GONE);
-                        display.setVisibility(GONE);
                     }
                 });
 
@@ -325,14 +325,6 @@ public class MainLobby extends AppCompatActivity {
 
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        //Sign-out the user
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        mAuth.signOut();
-    }
-
     public float similarity(@NonNull String candidate, @NonNull String target) {
 
         int sims = 0;
@@ -349,7 +341,10 @@ public class MainLobby extends AppCompatActivity {
 
         }
 
-        return (float) (sims / target.length());
+        if (target.length() != 0) {
+            return (float) (sims / target.length());
+        }
+        return 0;
 
     }
 
@@ -362,7 +357,9 @@ public class MainLobby extends AppCompatActivity {
         button_sound = MediaPlayer.create(this, R.raw.select);
 
         button_sound.start();
-        button_sound.release();
+        if (!button_sound.isPlaying()) {
+            button_sound.release();
+        }
         //Erase what was written
         editText.setText("");
         float match_score = 0f;
@@ -415,23 +412,25 @@ public class MainLobby extends AppCompatActivity {
                 });
             }
         });
-        //For loop to analyze the contents of the ArrayAdapter
-        for (int x = 0; x < adapter1.getCount(); x++) {
+        if (adapter1 != null) {
+            //For loop to analyze the contents of the ArrayAdapter
+            for (int x = 0; x < adapter1.getCount(); x++) {
 
-            float similarity1 = similarity(adapter1.getItem(x), search1);
-            if (arr5.size() != 0) {
-                match_score = arr5.get(x) * 0.6f + 0.4f * similarity1;
-            } else {
-                match_score = similarity1;
+                float similarity1 = similarity(adapter1.getItem(x), search1);
+                if (arr5.size() != 0) {
+                    match_score = arr5.get(x) * 0.6f + 0.4f * similarity1;
+                } else {
+                    match_score = similarity1;
+                }
+                scores.add(match_score);
+
             }
-            scores.add(match_score);
-
+            //Now, sort the user list according to this match_score order...
+            scores.sort(Comparator.comparingDouble(arr5::indexOf));
+            //Then, update the listview
+            adapter1.notifyDataSetChanged();
+            listview.setAdapter(adapter1);
         }
-        //Now, sort the user list according to this match_score order...
-        scores.sort(Comparator.comparingDouble(arr5::indexOf));
-        //Then, update the listview
-        adapter1.notifyDataSetChanged();
-        listview.setAdapter(adapter1);
     }
 
     public String getName(String in, int N) {
@@ -516,7 +515,9 @@ public class MainLobby extends AppCompatActivity {
 
                             MediaPlayer win = MediaPlayer.create(getApplicationContext(), R.raw.win);
                             win.start();
-                            win.release();
+                            if (!win.isPlaying()) {
+                                win.release();
+                            }
 
                         }
                         Float scaled_value = (Float) snapshot.getValue();
@@ -554,12 +555,9 @@ public class MainLobby extends AppCompatActivity {
 
                                 //Make sure to not be able to friend oneself
                                 if (!child.getKey().equals(usernameID)) {
-                                    if (!(child.getValue() instanceof HashMap)) {
-                                        arr1.add((String) child.getValue());
-                                        arr4.add((String) child.getKey());
-                                    }
-                                }
-                                if (arr1 == null || arr1.size() == 0) {
+                                    arr1.add((String) child.getValue().toString());
+                                    arr4.add((String) child.getKey());
+                                } else if (arr1 == null || arr1.size() == 0) {
                                     return;
                                 }
                             }
@@ -580,8 +578,6 @@ public class MainLobby extends AppCompatActivity {
 
                             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                             ListView PeopleList = (ListView) findViewById(R.id.ItemList);
-                            TextView display = findViewById(R.id.textView3);
-                            display.setVisibility(VISIBLE);
                             adapter.notifyDataSetChanged();
                             PeopleList.setAdapter(adapter);
                             arr1 = new ArrayList<String>();
@@ -814,11 +810,20 @@ public class MainLobby extends AppCompatActivity {
 
                         request_sent1[0] = dataSnapshot.getValue().toString();
                         request_sent = request_sent1[0];
-                        TextView display = findViewById(R.id.textView3);
-                        display.setText(request_sent1[0]);
                         MediaPlayer notif = MediaPlayer.create(getApplicationContext(), R.raw.notification);
                         notif.start();
-                        notif.release();
+                        if (!notif.isPlaying()) {
+                            notif.release();
+                        }
+                        ListView listview_ = findViewById(R.id.ItemList3);
+                        matching = p.matcher(request_sent);
+                        String who = getName(request_sent, 7);
+                        arr8.add(who);
+                        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                                MainLobby.this, android.R.layout.simple_spinner_item, arr8);
+                        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+                        adapter.notifyDataSetChanged();
+                        listview_.setAdapter(adapter);
 
 
                     }
