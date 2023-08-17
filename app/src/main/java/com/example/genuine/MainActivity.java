@@ -42,7 +42,6 @@ import com.google.android.gms.ads.MobileAds;
 import com.google.android.gms.ads.initialization.InitializationStatus;
 import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -123,6 +122,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getSupportActionBar().hide();
         setContentView(R.layout.activity_main);
         FirebaseApp.initializeApp(this);
         MobileAds.initialize(this, new OnInitializationCompleteListener() {
@@ -134,15 +134,6 @@ public class MainActivity extends AppCompatActivity {
         listen_for_messages();
 
     }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        //Sign-out the user
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        mAuth.signOut();
-    }
-
     public void listen_for_messages() {
 
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();

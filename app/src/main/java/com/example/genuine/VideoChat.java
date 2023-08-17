@@ -22,7 +22,6 @@ import android.widget.TextView;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
@@ -49,6 +48,7 @@ public class VideoChat extends AppCompatActivity {
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getSupportActionBar().hide();
         setContentView(R.layout.activity_video_chat);
         textview = findViewById(R.id.textView8);
         //Add the text
@@ -126,14 +126,6 @@ public class VideoChat extends AppCompatActivity {
                 handler.post(this);
             }
         });
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        //Sign-out the user
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        mAuth.signOut();
     }
 
     @Override

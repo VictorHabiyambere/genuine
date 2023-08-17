@@ -217,6 +217,7 @@ public class MainLobby extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getSupportActionBar().hide();
         setContentView(R.layout.activity_main_lobby);
         FirebaseApp.initializeApp(this);
         MobileAds.initialize(this, new OnInitializationCompleteListener() {
@@ -323,14 +324,6 @@ public class MainLobby extends AppCompatActivity {
         //but I really don't want my app to be like to other messaging apps
         //especially since I have the choice of making it however I want it to be
 
-    }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        //Sign-out the user
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        mAuth.signOut();
     }
 
     public float similarity(@NonNull String candidate, @NonNull String target) {

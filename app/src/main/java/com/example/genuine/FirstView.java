@@ -40,6 +40,7 @@ public class FirstView extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        getSupportActionBar().hide();
         MobileAds.initialize(this, initializationStatus -> {
         });
         FirebaseApp.initializeApp(this);
@@ -67,15 +68,6 @@ public class FirstView extends AppCompatActivity {
             isLogged_in(user_list);
         }
     }
-
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        //Sign-out the user
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
-        mAuth.signOut();
-    }
-
     public void isLogged_in(DatabaseReference mDatabase) {
 
         final Handler handler = new Handler();
