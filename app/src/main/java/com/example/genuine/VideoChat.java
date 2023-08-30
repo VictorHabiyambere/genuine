@@ -19,6 +19,7 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
@@ -30,6 +31,7 @@ import com.google.firebase.database.ValueEventListener;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Objects;
 
 public class VideoChat extends AppCompatActivity {
 
@@ -37,18 +39,17 @@ public class VideoChat extends AppCompatActivity {
     private static final int CAMERA_REQUEST = 1888;
     private static final int MY_CAMERA_PERMISSION_CODE = 100;
     private static final String LOG_TAG = "AudioRecordTest";
-    public static ImageView image1;
+    public ImageView image1;
     public static Bitmap theImage;
     public static String net_text;
     private static final String fileName = null;
     public MediaRecorder mediaRecorder = new MediaRecorder();
     public TextView textview;
     private MediaPlayer player;
-    private SpeechRecognizer speechRecognizer;
 
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getSupportActionBar().hide();
+        Objects.requireNonNull(getSupportActionBar()).hide();
         setContentView(R.layout.activity_video_chat);
         net_text = "Dialogue" + '\n';
         textview = findViewById(R.id.textView8);
@@ -63,7 +64,7 @@ public class VideoChat extends AppCompatActivity {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_2_TS);
         }
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(getApplicationContext());
+        SpeechRecognizer speechRecognizer = SpeechRecognizer.createSpeechRecognizer(getApplicationContext());
         speechRecognizer.setRecognitionListener(new RecognitionListener() {
             @Override
             public void onReadyForSpeech(Bundle bundle) {
@@ -100,6 +101,7 @@ public class VideoChat extends AppCompatActivity {
             @Override
             public void onResults(Bundle bundle) {
                 ArrayList<String> data = bundle.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION);
+                assert data != null;
                 net_text = username1 + " said:" + data.get(0) + "/n";
                 DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
                 mDatabase.child("Video Chat:" + usernameID + " with " + request_sentID).child("Transcription").child(request_sentID).setValue(net_text);
@@ -124,7 +126,7 @@ public class VideoChat extends AppCompatActivity {
             public void run() {
                 //Record audio, send data to real-time database
                 startRecording();
-                handler.post(this);
+                handler.postDelayed(this, 2000);
             }
         });
     }
@@ -133,7 +135,8 @@ public class VideoChat extends AppCompatActivity {
     public void onActivityResult(int requestCode, int resultCode, @Nullable Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == CAMERA_REQUEST && resultCode == Activity.RESULT_OK) {
-            theImage = (Bitmap) data.getExtras().get("data");
+            assert data != null;
+            theImage = (Bitmap) Objects.requireNonNull(data.getExtras()).get("data");
             setDataToDataBase(theImage);
         }
     }
@@ -150,32 +153,31 @@ public class VideoChat extends AppCompatActivity {
         String node = "Video Chat:" + usernameID + " with " + request_sentID;
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference().child(node).child(usernameID);
         final Handler handler = new Handler();
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
+        handler.post(
+                new Runnable() {
+                    public void run() {
+                        mDatabase.addValueEventListener(new ValueEventListener() {
 
-                mDatabase.addValueEventListener(new ValueEventListener() {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                                if (dataSnapshot.getValue() == null) {
+                                    return;
+                                }
+                                theImage = (Bitmap) dataSnapshot.getValue();
+                                image1.setImageBitmap(theImage);
 
-                        if (dataSnapshot.getValue() == null) {
-                            return;
-                        }
-                        theImage = (Bitmap) dataSnapshot.getValue();
-                        image1.setImageBitmap(theImage);
+                            }
 
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                System.out.println("The read failed: " + databaseError.getCode());
+                            }
+
+                        });
+                        handler.postDelayed(this, 2000);
                     }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        System.out.println("The read failed: " + databaseError.getCode());
-                    }
-
                 });
-
-            }
-        });
 
     }
 
@@ -184,36 +186,35 @@ public class VideoChat extends AppCompatActivity {
         String node = "Video Chat:" + usernameID + " with " + request_sentID;
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference().child(node).child("Transcription").child(usernameID);
         final Handler handler = new Handler();
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
+        handler.post(
 
-                mDatabase.addValueEventListener(new ValueEventListener() {
+                new Runnable() {
+                    public void run() {
+                        mDatabase.addValueEventListener(new ValueEventListener() {
 
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                        if (dataSnapshot.getValue() == null) {
-                            return;
-                        }
+                                if (dataSnapshot.getValue() == null) {
+                                    return;
+                                }
 
-                        String transcribed_speech = (String) dataSnapshot.getValue();
-                        textview = findViewById(R.id.textView8);
-                        //Add the text
-                        textview.append(transcribed_speech);
+                                String transcribed_speech = (String) dataSnapshot.getValue();
+                                textview = findViewById(R.id.textView8);
+                                //Add the text
+                                textview.append(transcribed_speech);
 
+                            }
+
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                System.out.println("The read failed: " + databaseError.getCode());
+                            }
+
+                        });
+                        handler.postDelayed(this, 2000);
                     }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        System.out.println("The read failed: " + databaseError.getCode());
-                    }
-
                 });
-
-            }
-        });
-
     }
 
     private void getPlaying() {
@@ -235,33 +236,34 @@ public class VideoChat extends AppCompatActivity {
 
         String node = "Video Chat:" + usernameID + " with " + request_sentID;
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference().child(node).child("Audio" + usernameID);
-        final Handler handler = new Handler();
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
+        Handler handler = new Handler();
+        handler.post(
+                new Runnable() {
+                    public void run() {
 
-                mDatabase.addValueEventListener(new ValueEventListener() {
+                        mDatabase.addValueEventListener(new ValueEventListener() {
 
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                            @Override
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                        if (dataSnapshot.getValue() == null) {
-                            return;
-                        }
-                        player = (MediaPlayer) dataSnapshot.getValue();
-                        startPlaying(player);
+                                if (dataSnapshot.getValue() == null) {
+                                    return;
+                                }
+                                player = (MediaPlayer) dataSnapshot.getValue();
+                                startPlaying(player);
 
-                    }
+                            }
 
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        System.out.println("The read failed: " + databaseError.getCode());
+                            @Override
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
+                                System.out.println("The read failed: " + databaseError.getCode());
+                            }
+
+                        });
+                        handler.postDelayed(this, 2000);
                     }
 
                 });
-
-            }
-        });
 
     }
 

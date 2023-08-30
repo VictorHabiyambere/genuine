@@ -1,61 +1,45 @@
 package com.example.genuine;
 
-import static android.view.View.GONE;
-import static android.view.View.VISIBLE;
+import static android.content.ContentValues.TAG;
 import static com.example.genuine.MainLobby.accuracy;
 import static com.example.genuine.MainLobby.module;
 import static java.util.Arrays.sort;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.database.Cursor;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
-import android.graphics.Canvas;
-import android.graphics.ColorFilter;
-import android.graphics.PixelFormat;
 import android.graphics.drawable.Drawable;
 import android.media.MediaPlayer;
 import android.net.Uri;
-import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.MediaStore;
-import android.util.Base64;
+import android.util.Log;
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 import android.widget.VideoView;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 import com.google.android.gms.ads.MobileAds;
-import com.google.android.gms.ads.initialization.InitializationStatus;
-import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
 import com.google.firebase.FirebaseApp;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
 
-import org.pytorch.IValue;
-import org.pytorch.Tensor;
-import org.pytorch.torchvision.TensorImageUtils;
-
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,25 +58,18 @@ public class MainActivity extends AppCompatActivity {
 
     public static String message_sent2;
 
+    public static Map<Integer, String> word_base;
+
     public static Bitmap sent_image = null;
 
     public static int messages_sent = 0;
 
     public static Uri sent_video = null;
-    public static ArrayList<String> arr1;
 
-    //Note: I will use the raw values, and scale them when processing trust levels
-    public static boolean state;
     public static String receiver;
     public static float actual_trustability = 0;
     public Pattern p = Pattern.compile("(\\w+)");
-    public Matcher matching;
-    public String username_request = "";
-    public Button accept;
-    public Button decline;
-    public boolean present = false;
-    public List<String> spinnerArray;
-    private MediaPlayer button_sound;
+    public static MediaPlayer button_sound;
 
     public static float calc_distance(String message_pred, String message) {
         int word_right = 0;
@@ -102,22 +79,90 @@ public class MainActivity extends AppCompatActivity {
             }
         }
         word_right += 1;
-        return word_right / message.length();
+        if (message.length() != 0) {
+            return word_right / message.length();
+        }
+        return 0;
     }
 
+    //Done
     public static float calc_trust(String message, String actual_response) {
 
-        //Infer what the user will say using my chatbot module
-        byte[] encodeByte = Base64.decode(message, Base64.DEFAULT);
-        Bitmap bitmap = BitmapFactory.decodeByteArray(encodeByte, 0, encodeByte.length);
-        Tensor inputTensor = TensorImageUtils.bitmapToFloat32Tensor(bitmap
-                ,
-                TensorImageUtils.TORCHVISION_NORM_MEAN_RGB, TensorImageUtils.TORCHVISION_NORM_STD_RGB);
-        Tensor outputTensor = module.forward(IValue.from(inputTensor)).toTensor();
-        String message_pred = outputTensor.toString();
-        //Measure trustability
-        float trustability = accuracy * calc_distance(message_pred, actual_response);
-        return trustability;
+        String[] message1 = message.replaceAll("[^a-zA-Z ]", "").toLowerCase().split("\\s+");
+        String[] response1 = actual_response.replaceAll("[^a-zA-Z ]", "").toLowerCase().split("\\s+");
+        StringBuilder response2 = new StringBuilder();
+        for (String str : response1) {
+            response2.append(str).append(" ");
+        }
+        int i1 = (message1.length / 10) + 1;
+        float[][] input = new float[i1][10];
+        float[][] output = new float[1][word_base.size()];
+        int i = 0;
+        StringBuilder final_ = new StringBuilder();
+        StringBuilder messageBuilder = new StringBuilder(message);
+        for (int x = 0; x != response1.length; x++) {
+            for (int i2 = 0; i2 != i1; i2++) {
+                for (String str : message1) {
+
+                    if (word_base.containsValue(str)) {
+
+                        //Get its associated key
+                        int key = 0;
+                        for (Map.Entry<Integer, String> entry : word_base.entrySet()) {
+                            if (entry.getValue().equals(str)) {
+                                key = entry.getKey();
+                            }
+                        }
+                        if (i < 10) {
+                            input[i2][i] = (float) key;
+                            i += 1;
+                        }
+                    }
+
+                }
+            }
+            module.run(input, output);
+            //Measure trustability
+            //Convert output to
+            String word = word_base.get(output);
+            final_.append(word).append(" ");
+            messageBuilder.append(word).append(" ");
+            message1 = messageBuilder.toString().replaceAll("[^a-zA-Z ]", "").toLowerCase().split("\\s+");
+        }
+        //Calculate the distance between prediction and reality
+        return accuracy * calc_distance(final_.toString(), response2.toString());
+    }
+
+    public void listen_for_knowledge() {
+
+        DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference().child("WordKnowledgeBase");
+        final Handler handler = new Handler();
+        handler.post(new Runnable() {
+            @Override
+            public void run() {
+
+                mDatabase.addValueEventListener(new ValueEventListener() {
+
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+                        if (!dataSnapshot.exists()) {
+                            return;
+                        }
+                        word_base = (Map<Integer, String>) dataSnapshot.getValue();
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError error) {
+
+                    }
+
+                });
+
+                handler.postDelayed(this, 2000);
+
+            }
+        });
+
     }
 
     @Override
@@ -125,14 +170,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         FirebaseApp.initializeApp(this);
-        MobileAds.initialize(this, new OnInitializationCompleteListener() {
-            @Override
-            public void onInitializationComplete(InitializationStatus initializationStatus) {
-            }
+        MobileAds.initialize(this, initializationStatus -> {
         });
         messages_sent = 0;
         listen_for_messages();
-
+        listen_for_knowledge();
     }
 
     @Override
@@ -148,7 +190,6 @@ public class MainActivity extends AppCompatActivity {
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
         final Handler handler = new Handler();
         String[] message_sent1 = new String[1];
-        LinearLayout linearLayout = findViewById(R.id.linearLayout5);
         final boolean[] not_found = {true};
         String[] username1 = {""};
         String[] username2 = {""};
@@ -167,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
                             middle[0] = getName(ds1.getKey(), 1);
                             if (!middle[0].equals("messaging")) {
                                 not_found[0] = true;
-                            } else if (middle[0].equals("messaging")) {
+                            } else {
                                 username2[0] = getName(ds1.getKey(), 2);
                                 not_found[0] = false;
                                 ds = ds1;
@@ -179,7 +220,7 @@ public class MainActivity extends AppCompatActivity {
 
                             //Check if the username is present in this key
                             if (username1[0].equals(usernameID)) {
-                                String message1 = "";
+                                String message1;
 
                                 message1 = (String) ds.child(username2[0]).getValue();
                                 message_sent1[0] = message1;
@@ -195,28 +236,8 @@ public class MainActivity extends AppCompatActivity {
                                 TextView display = new TextView(getApplicationContext());
                                 display.setText(message_sent1[0]);
                                 mDatabase.child("Dataset").child("Response " + username2[0]).setValue(message_sent1[0]);
-                                Drawable d = new Drawable() {
-                                    @Override
-                                    public void draw(@NonNull Canvas canvas) {
-
-                                    }
-
-                                    @Override
-                                    public void setAlpha(int alpha) {
-
-                                    }
-
-                                    @Override
-                                    public void setColorFilter(@Nullable ColorFilter colorFilter) {
-
-                                    }
-
-                                    @Override
-                                    public int getOpacity() {
-                                        return PixelFormat.UNKNOWN;
-                                    }
-                                };
-                                d = ContextCompat.getDrawable(MainActivity.this, R.drawable.messagebox).getConstantState().newDrawable();
+                                Drawable d;
+                                d = Objects.requireNonNull(Objects.requireNonNull(ContextCompat.getDrawable(MainActivity.this, R.drawable.messagebox)).getConstantState()).newDrawable();
                                 display.setPadding(30, 30, 30, 30);
                                 display.setBackground(d);
                                 display.setBackgroundTintList(ContextCompat.getColorStateList(MainActivity.this, R.color.tint_color));
@@ -231,7 +252,7 @@ public class MainActivity extends AppCompatActivity {
                                 return;
                             }
                             if (username2[0].equals(usernameID)) {
-                                String message1 = "";
+                                String message1;
                                 message1 = (String) ds.child(username1[0]).getValue();
                                 message_sent1[0] = message1;
                                 if (message_sent1[0] == null) {
@@ -246,28 +267,8 @@ public class MainActivity extends AppCompatActivity {
                                 TextView display = new TextView(getApplicationContext());
                                 display.setText(message_sent1[0]);
                                 mDatabase.child("Dataset").child("Response " + username1[0]).setValue(message_sent1[0]);
-                                Drawable d = new Drawable() {
-                                    @Override
-                                    public void draw(@NonNull Canvas canvas) {
-
-                                    }
-
-                                    @Override
-                                    public void setAlpha(int alpha) {
-
-                                    }
-
-                                    @Override
-                                    public void setColorFilter(@Nullable ColorFilter colorFilter) {
-
-                                    }
-
-                                    @Override
-                                    public int getOpacity() {
-                                        return PixelFormat.UNKNOWN;
-                                    }
-                                };
-                                d = ContextCompat.getDrawable(MainActivity.this, R.drawable.messagebox).getConstantState().newDrawable();
+                                Drawable d;
+                                d = Objects.requireNonNull(Objects.requireNonNull(ContextCompat.getDrawable(MainActivity.this, R.drawable.messagebox)).getConstantState()).newDrawable();
                                 display.setPadding(30, 30, 30, 30);
                                 display.setBackground(d);
                                 display.setBackgroundTintList(ContextCompat.getColorStateList(MainActivity.this, R.color.tint_color));
@@ -290,7 +291,7 @@ public class MainActivity extends AppCompatActivity {
 
                 });
                 if (!not_found[0]) {
-                    handler.post(this);
+                    handler.postDelayed(this, 2000);
                 }
 
             }
@@ -309,8 +310,7 @@ public class MainActivity extends AppCompatActivity {
 
     public String getName(String in, int N) {
         Matcher m = p.matcher(in);
-        for (int i = 0; i < N && m.find(); i++) {
-        }
+        for (int i = 0; i < N && m.find(); i++) ;
 
         if (!m.find()) {
             return "";
@@ -322,57 +322,21 @@ public class MainActivity extends AppCompatActivity {
     //Allow users to select images and send them so a friend
 
     public void get_image(View view) {
-
-        if (Build.VERSION.SDK_INT <= 19) {
-
-            Intent i = new Intent();
-            i.setType("image/*");
-            i.setAction(Intent.ACTION_GET_CONTENT);
-            i.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(i, GALLARY_IMAGE);
-
-        } else if (Build.VERSION.SDK_INT > 19) {
-            Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             startActivityForResult(intent, GALLARY_IMAGE);
-        }
 
     }
 
     public void get_video(View view) {
 
         button_sound = MediaPlayer.create(this, R.raw.select);
-
         button_sound.start();
-        button_sound.release();
+        button_sound.setOnCompletionListener(MediaPlayer::release);
 
-        if (Build.VERSION.SDK_INT <= 19) {
-
-            Intent i = new Intent();
-            i.setType("video/*");
-            i.setAction(Intent.ACTION_GET_CONTENT);
-            i.addCategory(Intent.CATEGORY_OPENABLE);
-            startActivityForResult(i, PICK_VIDEO);
-
-        } else if (Build.VERSION.SDK_INT > 19) {
-            Intent intent = new Intent(Intent.ACTION_PICK, android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        Intent intent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
             startActivityForResult(intent, PICK_VIDEO);
-        }
 
 
-    }
-
-    private String getRealPathFromURI(Uri contentURI) {
-        String filePath;
-        Cursor cursor = getContentResolver().query(contentURI, null, null, null, null);
-        if (cursor == null) {
-            filePath = contentURI.getPath();
-        } else {
-            cursor.moveToFirst();
-            int idx = cursor.getColumnIndex(MediaStore.Images.ImageColumns.DATA);
-            filePath = cursor.getString(idx);
-            cursor.close();
-        }
-        return filePath;
     }
 
     @Override
@@ -389,7 +353,6 @@ public class MainActivity extends AppCompatActivity {
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-                String selectedImagePath = getRealPathFromURI(selectedImageUri);
 
             } else if (requestCode == PICK_VIDEO) {
 
@@ -406,14 +369,32 @@ public class MainActivity extends AppCompatActivity {
         EditText message = findViewById(R.id.editTextText);
         String message_sent = message.getText().toString();
         button_sound = MediaPlayer.create(this, R.raw.select);
-
         button_sound.start();
-        button_sound.release();
-        if (message_sent == "") {
+        button_sound.setOnCompletionListener(MediaPlayer::release);
+        if (message_sent.equals("")) {
             return;
         }
         FirebaseDatabase.getInstance();
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
+        FirebaseAuth mAuth = FirebaseAuth.getInstance();
+        mAuth.signInAnonymously()
+                .addOnCompleteListener(MainActivity.this, task -> {
+                    if (task.isSuccessful()) {
+                        // Sign in success, update UI with the signed-in user's information
+                        Log.d(TAG, "signInAnonymously:success");
+
+                    } else {
+                        // If sign in fails, display a message to the user.
+                        Log.w(TAG, "signInAnonymously:failure", task.getException());
+                        Toast.makeText(MainActivity.this, "Authentication failed.",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user != null) {
+            usernameID = user.getUid();
+        }
+
         String[] users = new String[]{receiver, usernameID};
         sort(users);
         String setup = users[0] + " messaging " + users[1];
@@ -421,28 +402,8 @@ public class MainActivity extends AppCompatActivity {
         LinearLayout linearLayout = findViewById(R.id.linearLayout5);
         TextView display = new TextView(getApplicationContext());
         display.setText(message_sent);
-        Drawable d = new Drawable() {
-            @Override
-            public void draw(@NonNull Canvas canvas) {
-
-            }
-
-            @Override
-            public void setAlpha(int alpha) {
-
-            }
-
-            @Override
-            public void setColorFilter(@Nullable ColorFilter colorFilter) {
-
-            }
-
-            @Override
-            public int getOpacity() {
-                return PixelFormat.UNKNOWN;
-            }
-        };
-        d = ContextCompat.getDrawable(MainActivity.this, R.drawable.messagebox).getConstantState().newDrawable();
+        Drawable d;
+        d = Objects.requireNonNull(Objects.requireNonNull(ContextCompat.getDrawable(MainActivity.this, R.drawable.messagebox)).getConstantState()).newDrawable();
         display.setPadding(30, 30, 30, 30);
         display.setBackground(d);
         display.setTextColor((ContextCompat.getColor(MainActivity.this, R.color.white)));
@@ -478,86 +439,9 @@ public class MainActivity extends AppCompatActivity {
     //Shows the 10 friends of a user
     //Next, I plan to place them in the order of trustability
 
-    ArrayList<String> getFriends(DatabaseReference db) {
-
-        db.addListenerForSingleValueEvent(new ValueEventListener() {
-            @Override
-            public void onDataChange(DataSnapshot dataSnapshot) {
-                if (dataSnapshot == null) {
-                    return;
-                }
-                for (DataSnapshot child : dataSnapshot.getChildren()) {
-
-                    if (child != null) {
-
-                        arr1.add((String) child.getValue());
-
-                    }
-
-                }
-            }
-
-            @Override
-            public void onCancelled(DatabaseError databaseError) {
-                System.out.println("The read failed: " + databaseError.getCode());
-            }
-        });
-        return arr1;
-
-
-    }
-
     //I don't know how to configure it such that when a list item is clicked,
     //the message system will be successfully set-up...
     //but I will figure this out when I learn more about android listviews
-
-    //Here,
-    public void get_friends(View view) {
-
-        //The username chosen by the user will be selected!!
-
-        DatabaseReference friends_list = FirebaseDatabase.getInstance().getReference().child(usernameID).child("Friends");
-
-        arr1 = getFriends(friends_list);
-
-        for (String s : arr1) {
-            spinnerArray.add(s);
-        }
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
-                this, android.R.layout.simple_spinner_item, spinnerArray) {
-            @Override
-            public View getDropDownView(int position, View convertView, ViewGroup parent) {
-
-                View v = null;
-
-                if (position == 0) {
-                    TextView tv = new TextView(getContext());
-                    tv.setHeight(0);
-                    tv.setVisibility(View.GONE);
-                    v = tv;
-                } else {
-
-                    v = super.getDropDownView(position, null, parent);
-                }
-
-                parent.setVerticalScrollBarEnabled(false);
-                return v;
-            }
-        };
-        ListView FriendsList = findViewById(R.id.ItemList2);
-        FriendsList.setAdapter(adapter);
-        state = !state;
-
-        if (state && arr1.size() != 0) {
-            FriendsList.setVisibility(VISIBLE);
-        } else if (!state) {
-            FriendsList.setVisibility(GONE);
-        }
-
-        arr1 = new ArrayList<String>();
-
-    }
 
 
 }

@@ -8,12 +8,33 @@
     tools:context=".FirstView">
 
     <LinearLayout
+        android:layout_width="402dp"
+        android:layout_height="40dp"
+        android:layout_marginTop="2dp"
+        android:orientation="horizontal"
+        ads:layout_constraintBottom_toTopOf="@+id/linearLayout8"
+        ads:layout_constraintEnd_toEndOf="@+id/linearLayout9"
+        ads:layout_constraintStart_toStartOf="@+id/linearLayout9"
+        ads:layout_constraintTop_toBottomOf="@+id/linearLayout9">
+
+        <EditText
+            android:id="@+id/editTextText2"
+            android:layout_width="413dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:ems="10"
+            android:hint="Password"
+            android:inputType="text"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/linearLayout9"
         android:layout_width="392dp"
         android:layout_height="71dp"
+        android:layout_marginTop="40dp"
         android:orientation="horizontal"
         ads:layout_constraintEnd_toEndOf="parent"
-        ads:layout_constraintHorizontal_bias="0.573"
         ads:layout_constraintStart_toStartOf="parent"
         ads:layout_constraintTop_toTopOf="parent">
 
@@ -27,8 +48,8 @@
 
     <LinearLayout
         android:id="@+id/linearLayout8"
-        android:layout_width="377dp"
-        android:layout_height="55dp"
+        android:layout_width="402dp"
+        android:layout_height="22dp"
         android:layout_marginTop="44dp"
         android:layout_marginBottom="40dp"
         android:orientation="horizontal"
@@ -57,9 +78,8 @@
         android:layout_height="48dp"
         android:layout_marginTop="12dp"
         android:orientation="horizontal"
-        ads:layout_constraintEnd_toEndOf="parent"
-        ads:layout_constraintHorizontal_bias="0.595"
-        ads:layout_constraintStart_toStartOf="parent"
+        ads:layout_constraintEnd_toEndOf="@+id/linearLayout9"
+        ads:layout_constraintStart_toStartOf="@+id/linearLayout9"
         ads:layout_constraintTop_toBottomOf="@+id/linearLayout8">
 
         <Button
@@ -108,8 +128,8 @@
 
     <com.google.android.gms.ads.AdView
         android:id="@+id/adView2"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="330dp"
+        android:layout_height="23dp"
         android:layout_marginStart="45dp"
         android:layout_marginTop="13dp"
         android:layout_marginEnd="46dp"

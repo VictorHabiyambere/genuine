@@ -1,8 +1,6 @@
 package com.example.genuine;
 
 import static android.content.ContentValues.TAG;
-import static android.view.View.GONE;
-import static android.view.View.VISIBLE;
 import static com.example.genuine.FirstView.username1;
 import static com.example.genuine.MainActivity.usernameID;
 import static com.example.genuine.MainLobby.request_sent;
@@ -12,7 +10,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.GestureDetector;
@@ -20,10 +17,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.ListAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -33,12 +27,8 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.google.android.gms.ads.MobileAds;
-import com.google.android.gms.ads.initialization.InitializationStatus;
-import com.google.android.gms.ads.initialization.OnInitializationCompleteListener;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.firebase.FirebaseApp;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.database.ChildEventListener;
@@ -47,15 +37,18 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
+import com.google.firebase.ml.modeldownloader.CustomModel;
+import com.google.firebase.ml.modeldownloader.CustomModelDownloadConditions;
+import com.google.firebase.ml.modeldownloader.DownloadType;
+import com.google.firebase.ml.modeldownloader.FirebaseModelDownloader;
 
-import org.pytorch.Module;
+import org.tensorflow.lite.Interpreter;
 
 import java.io.File;
-import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.Dictionary;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -85,22 +78,28 @@ class OnSwipeTouchListener extends AppCompatActivity implements View.OnTouchList
         return gestureDetector.onTouchEvent(event);
     }
 
-    public void onSwipeRight(int pos) {
+    public void onSwipeRight() {
         //Do what you want after swiping left to right
         matching = p.matcher(request_sent);
         String who = getName(request_sent, 7);
+        ListView listview3 = findViewById(R.id.ItemList3);
         //The sender gets a notice that the user has rejected their request sent to them
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
         DatabaseReference mDatabase2 = FirebaseDatabase.getInstance().getReference().child("Users");
         mDatabase.child("Users").child(usernameID).child("Requests").removeValue();
         mDatabase.child("Users").child(usernameID).child("Requested").removeValue();
         mDatabase2.child(request_sentID).child("Rejection").setValue(who);
+        ArrayAdapter adapter_ = (ArrayAdapter) listview3.getAdapter();
+        adapter_.remove(who);
+        adapter_.notifyDataSetChanged();
+        listview3.setAdapter(adapter_);
         //Once this information is extracted, the proper prompt will be generated
     }
 
-    public void onSwipeLeft(int pos) {
+    public void onSwipeLeft() {
 
         //Do what you want after swiping right to left
+        ListView listview3 = findViewById(R.id.ItemList3);
         matching = p.matcher(request_sent);
         String who = getName(request_sent, 7);
         //The sender gets a notice that the user has rejected their request sent to them
@@ -109,6 +108,10 @@ class OnSwipeTouchListener extends AppCompatActivity implements View.OnTouchList
         mDatabase.child("Users").child(usernameID).child("Requests").removeValue();
         mDatabase.child("Users").child(usernameID).child("Requested").removeValue();
         mDatabase2.child(request_sentID).child("Rejection").setValue(who);
+        ArrayAdapter adapter_ = (ArrayAdapter) listview3.getAdapter();
+        adapter_.remove(who);
+        adapter_.notifyDataSetChanged();
+        listview3.setAdapter(adapter_);
         //Once this information is extracted, the proper prompt will be generated
     }
 
@@ -118,26 +121,23 @@ class OnSwipeTouchListener extends AppCompatActivity implements View.OnTouchList
         private static final int SWIPE_VELOCITY_THRESHOLD = 100;
 
         @Override
-        public boolean onDown(MotionEvent e) {
+        public boolean onDown(@NonNull MotionEvent e) {
             return true;
-        }
-
-        private int getPostion(MotionEvent e1) {
-            return list.pointToPosition((int) e1.getX(), (int) e1.getY());
         }
 
         @Override
         public boolean onFling(MotionEvent e1, MotionEvent e2,
                                float velocityX, float velocityY) {
+            assert e1 != null;
             float distanceX = e2.getX() - e1.getX();
             float distanceY = e2.getY() - e1.getY();
             if (Math.abs(distanceX) > Math.abs(distanceY)
                     && Math.abs(distanceX) > SWIPE_THRESHOLD
                     && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {
                 if (distanceX > 0)
-                    onSwipeRight(getPostion(e1));
+                    onSwipeRight();
                 else
-                    onSwipeLeft(getPostion(e1));
+                    onSwipeLeft();
                 return true;
             }
             return false;
@@ -148,7 +148,7 @@ class OnSwipeTouchListener extends AppCompatActivity implements View.OnTouchList
 
 public class MainLobby extends AppCompatActivity {
 
-    public static Module module;
+    public static Interpreter module;
 
     public static float scaled_val;
 
@@ -165,15 +165,11 @@ public class MainLobby extends AppCompatActivity {
 
     public static ArrayList<Float> arr5 = new ArrayList<>();
 
-    public static ArrayList<Float> arr6 = new ArrayList<Float>();
+    public static ArrayList<Float> arr6 = new ArrayList<>();
 
     public static ArrayList<String> arr7 = new ArrayList<>();
 
     public static ArrayList<String> arr8 = new ArrayList<>();
-
-    public static Button accept;
-
-    public static Button decline;
 
     public static String request_sent;
 
@@ -191,42 +187,67 @@ public class MainLobby extends AppCompatActivity {
     public boolean present = false;
 
     public float MAX_VALUE = (float) Math.pow(10, 4);
-
-    public EditText message;
-
-    public List<String> spinnerArray = new ArrayList<String>();
-    public List<String> spinnerArray2 = new ArrayList<String>();
-    private MediaPlayer button_sound;
-
-    public static boolean find_string(String str, List<String> container) {
-
-        for (String val : container) {
-
-            if (val == str) {
-
-                return true;
-
-            }
-
-        }
-        return false;
-
-    }
+    public static MediaPlayer sound;
+    public List<String> spinnerArray = new ArrayList<>();
+    public List<String> spinnerArray2 = new ArrayList<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getSupportActionBar().hide();
+        Objects.requireNonNull(getSupportActionBar()).hide();
         setContentView(R.layout.activity_main_lobby);
-        Intent intent = getIntent();
-        username1 = intent.getStringExtra("Username:");
+        FirebaseAuth mAuth = FirebaseAuth.getInstance();
+        mAuth.signInAnonymously()
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // Sign in success, update UI with the signed-in user's information
+                        Log.d(TAG, "signInAnonymously:success");
+
+                    } else {
+                        // If sign in fails, display a message to the user.
+                        Log.w(TAG, "signInAnonymously:failure", task.getException());
+                        Toast.makeText(MainLobby.this, "Authentication failed.",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                });
+        FirebaseUser user = mAuth.getCurrentUser();
+        if (user != null) {
+            usernameID = user.getUid();
+            DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference().child(usernameID);
+            final Handler handler = new Handler();
+            handler.post(new Runnable() {
+                @Override
+                public void run() {
+
+                    mDatabase.addListenerForSingleValueEvent(new ValueEventListener() {
+                        @Override
+                        public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                            if (dataSnapshot.getValue() == null) {
+                                return;
+                            }
+                            for (DataSnapshot child1 : dataSnapshot.getChildren()) {
+
+                                username1 = Objects.requireNonNull(child1.getValue()).toString();
+
+                            }
+                        }
+
+                        @Override
+                        public void onCancelled(@NonNull DatabaseError databaseError) {
+                            System.out.println("The read failed: " + databaseError.getCode());
+                        }
+                    });
+                    handler.postDelayed(this, 2000);
+                    handler.removeCallbacks(this);
+                }
+            });
+
+        }
         scaled_val = -1f;
         max_trust_value = 0;
         FirebaseApp.initializeApp(this);
-        MobileAds.initialize(this, new OnInitializationCompleteListener() {
-            @Override
-            public void onInitializationComplete(InitializationStatus initializationStatus) {
-            }
+        MobileAds.initialize(this, initializationStatus -> {
         });
 
         listen_for_model();
@@ -239,37 +260,26 @@ public class MainLobby extends AppCompatActivity {
 
         ListView listview = findViewById(R.id.ItemList2);
         listview.setOnItemClickListener(
-                new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> adapter, View view, int position,
-                                            long id) {
+                (adapter, view, position, id) -> {
 
-                        //Use the list position
-                        ListAdapter adapter1 = listview.getAdapter();
-                        //Get the username of the friend located at that position
-                        receiver = arr3.get(position);
-                        Intent intent = new Intent(MainLobby.this, MainActivity.class);
-                        //based on item add info to intent
-                        startActivity(intent);
-                    }
+                    //Use the list position
+                    //Get the username of the friend located at that position
+                    receiver = arr3.get(position);
+                    Intent intent = new Intent(MainLobby.this, MainActivity.class);
+                    //based on item add info to intent
+                    startActivity(intent);
                 });
 
         ListView listview2 = findViewById(R.id.ItemList);
         listview2.setOnItemClickListener(
-                new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> adapter, View view, int position,
-                                            long id) {
-                        //Use the list position
-                        ListAdapter adapter1 = listview2.getAdapter();
-                        String user_to_connect = adapter1.getItem(position).toString();
-                        request_sentID = arr4.get(position);
-                        //Get the username of the friend located at that position
-                        DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
-                        String message_sent = "Do you want to connect with " + username1 + "?";
-                        mDatabase.child("Users").child(request_sentID).child("Requests").setValue(message_sent);
-                        mDatabase.child("Users").child(request_sentID).child("Requested").setValue(usernameID);
-                    }
+                (adapter, view, position, id) -> {
+                    //Use the list position
+                    request_sentID = arr4.get(position);
+                    //Get the username of the friend located at that position
+                    DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
+                    String message_sent = "Do you want to connect with " + username1 + "?";
+                    mDatabase.child("Users").child(request_sentID).child("Requests").setValue(message_sent);
+                    mDatabase.child("Users").child(request_sentID).child("Requested").setValue(usernameID);
                 });
 
         ListView listview3 = findViewById(R.id.ItemList3);
@@ -280,10 +290,7 @@ public class MainLobby extends AppCompatActivity {
                     public void onItemClick(AdapterView<?> adapter, View view, int position,
                                             long id) {
                         //Use the list position
-                        ListAdapter adapter1 = listview3.getAdapter();
-                        String user_to_connect = adapter1.getItem(position).toString();
                         request_sentID = arr7.get(position);
-                        LinearLayout layout1 = findViewById(R.id.linearLayout3);
 
                         //Add the user to the list of people it can contact
                         //The effect is a display where users can access to message
@@ -296,34 +303,51 @@ public class MainLobby extends AppCompatActivity {
                         String who = getName(request_sent, 7);
 
                         //Add the friend to friends list
+                        //Remove friend request from listview
+                        ArrayAdapter adapter_ = (ArrayAdapter) listview3.getAdapter();
+                        adapter_.remove(who);
+                        adapter_.notifyDataSetChanged();
+                        listview3.setAdapter(adapter_);
                         DatabaseReference mDatabase2 = FirebaseDatabase.getInstance().getReference().child("Users").child(usernameID);
                         mDatabase.child("Users").child(usernameID).child("Requests").removeValue();
                         mDatabase.child("Users").child(usernameID).child("Requested").removeValue();
                         mDatabase2.child("Friends").child(who).setValue(request_sentID);
                         DatabaseReference mDatabase3 = FirebaseDatabase.getInstance().getReference().child("Users").child(request_sentID);
                         mDatabase3.child("Friends").child(username1).setValue(usernameID);
-                        final String[] who_username = {""};
-                        //Extract the username associated with a user ID
-                        accept.setVisibility(GONE);
-                        decline.setVisibility(GONE);
+                        DatabaseReference mDatabase_ = FirebaseDatabase.getInstance().getReference().child(usernameID);
+                        final Handler handler = new Handler();
+                        handler.post(new Runnable() {
+                            @Override
+                            public void run() {
+
+                                mDatabase_.addValueEventListener(new ValueEventListener() {
+                                    @Override
+                                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                                        if (dataSnapshot.getValue() == null) {
+                                            return;
+                                        }
+                                        for (DataSnapshot child1 : dataSnapshot.getChildren()) {
+
+                                            username1 = Objects.requireNonNull(child1.getValue()).toString();
+                                            mDatabase3.child("Friends").child(username1).setValue(usernameID);
+
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                                        System.out.println("The read failed: " + databaseError.getCode());
+                                    }
+                                });
+                                handler.postDelayed(this, 2000);
+                                handler.removeCallbacks(this);
+                            }
+                        });
                     }
                 });
 
         listview3.setOnTouchListener(new OnSwipeTouchListener(getApplicationContext(), listview3));
-        //Made sure that it
-        //runs as a background thread
-        //Listen for messages
-
-        //Okay, the mechanism for extracting responses has been set-up.
-        //The problem now is accumulating messages, as messages get overwritten
-        //My approach to solving this problem will be to introduce a button that allows
-        //you to go back 1 message back in time
-        //and another button that allows you to go 1 message forward in time
-        //and finally a input interface, using a list of people you are connected with,
-        //that will allow you to get their latest message
-        //A messaging system similar to IMessage might be implemented later,
-        //but I really don't want my app to be like to other messaging apps
-        //especially since I have the choice of making it however I want it to be
 
     }
 
@@ -356,69 +380,61 @@ public class MainLobby extends AppCompatActivity {
         //Then, sort them according to their match score
         EditText editText = findViewById(R.id.editText2);
         String search1 = editText.getText().toString();
-        button_sound = MediaPlayer.create(this, R.raw.select);
+        sound = MediaPlayer.create(this, R.raw.select);
+        sound.setOnCompletionListener(MediaPlayer::release);
+        sound.start();
 
-        button_sound.start();
-        if (!button_sound.isPlaying()) {
-            button_sound.release();
-        }
         //Erase what was written
         editText.setText("");
-        float match_score = 0f;
+        float match_score;
         //60% is the trust score
         //40% is the similarity score
         ListView listview = findViewById(R.id.ItemList);
         ArrayAdapter<String> adapter1 = (ArrayAdapter<String>) listview.getAdapter();
-        ArrayList<Float> scores = new ArrayList<Float>();
+        ArrayList<Float> scores = new ArrayList<>();
         DatabaseReference trust_list = FirebaseDatabase.getInstance().getReference().child("Scaled Trust:");
         final Handler handler = new Handler();
-        handler.post(new Runnable() {
+        handler.post(() -> trust_list.addChildEventListener(new ChildEventListener() {
+
+
             @Override
-            public void run() {
+            public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
 
-                trust_list.addChildEventListener(new ChildEventListener() {
-
-
-                    @Override
-                    public void onChildAdded(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-
-                    }
-
-                    @Override
-                    public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-
-                        //In this case, a child has changed
-                        if (snapshot.getValue() == null) {
-                            return;
-                        }
-                        Float scaled_value = (Float) snapshot.getValue();
-                        //Now, use this scaled value to sort,
-                        arr5.add(scaled_value);
-                    }
-
-                    @Override
-                    public void onChildRemoved(@NonNull DataSnapshot snapshot) {
-
-                    }
-
-                    @Override
-                    public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
-
-                    }
-
-                    @Override
-                    public void onCancelled(@NonNull DatabaseError databaseError) {
-                        System.out.println("The read failed: " + databaseError.getCode());
-                    }
-
-                });
             }
-        });
+
+            @Override
+            public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+                //In this case, a child has changed
+                if (snapshot.getValue() == null) {
+                    return;
+                }
+                Float scaled_value = (Float) snapshot.getValue();
+                //Now, use this scaled value to sort,
+                arr5.add(scaled_value);
+            }
+
+            @Override
+            public void onChildRemoved(@NonNull DataSnapshot snapshot) {
+
+            }
+
+            @Override
+            public void onChildMoved(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
+
+            }
+
+            @Override
+            public void onCancelled(@NonNull DatabaseError databaseError) {
+                System.out.println("The read failed: " + databaseError.getCode());
+            }
+
+        }));
         if (adapter1 != null) {
             //For loop to analyze the contents of the ArrayAdapter
             for (int x = 0; x < adapter1.getCount(); x++) {
 
-                float similarity1 = similarity(adapter1.getItem(x), search1);
+                float similarity1 = similarity(Objects.requireNonNull(adapter1.getItem(x)), search1);
                 if (arr5.size() != 0) {
                     match_score = arr5.get(x) * 0.6f + 0.4f * similarity1;
                 } else {
@@ -461,27 +477,21 @@ public class MainLobby extends AppCompatActivity {
         DatabaseReference people_list = FirebaseDatabase.getInstance().getReference().child("Users");
         DatabaseReference trust_list = FirebaseDatabase.getInstance().getReference().child("Scaled Trust:");
         mAuth.signInAnonymously()
-                .addOnCompleteListener(MainLobby.this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            Log.d(TAG, "signInAnonymously:success");
+                .addOnCompleteListener(MainLobby.this, task -> {
+                    if (task.isSuccessful()) {
+                        // Sign in success, update UI with the signed-in user's information
+                        Log.d(TAG, "signInAnonymously:success");
 
-                            FirebaseUser user = mAuth.getCurrentUser();
-
-                        } else {
-                            // If sign in fails, display a message to the user.
-                            Log.w(TAG, "signInAnonymously:failure", task.getException());
-                            Toast.makeText(MainLobby.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
-                        }
+                    } else {
+                        // If sign in fails, display a message to the user.
+                        Log.w(TAG, "signInAnonymously:failure", task.getException());
+                        Toast.makeText(MainLobby.this, "Authentication failed.",
+                                Toast.LENGTH_SHORT).show();
                     }
                 });
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             usernameID = user.getUid();
-            DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
         }
 
         final Handler handler = new Handler();
@@ -503,7 +513,7 @@ public class MainLobby extends AppCompatActivity {
                         //In this case, a child has changed
                         if (snapshot.getValue() == null) {
                             return;
-                        } else if (snapshot.getKey().equals(usernameID)) {
+                        } else if (Objects.equals(snapshot.getKey(), usernameID)) {
 
                             scaled_val = (float) snapshot.getValue();
                             //Display the scaled trust value
@@ -513,13 +523,11 @@ public class MainLobby extends AppCompatActivity {
 
                         }
                         //Play a winning sound when estimated trustability rises!
-                        if (scaled_val != -1f && scaled_val < (float) snapshot.getValue() && snapshot.getKey().equals(usernameID)) {
+                        if (scaled_val != -1f && scaled_val < (float) snapshot.getValue() && Objects.equals(snapshot.getKey(), usernameID)) {
 
-                            MediaPlayer win = MediaPlayer.create(getApplicationContext(), R.raw.win);
-                            win.start();
-                            if (!win.isPlaying()) {
-                                win.release();
-                            }
+                            sound = MediaPlayer.create(getApplicationContext(), R.raw.win);
+                            sound.setOnCompletionListener(MediaPlayer::release);
+                            sound.start();
 
                         }
                         Float scaled_value = (Float) snapshot.getValue();
@@ -547,31 +555,33 @@ public class MainLobby extends AppCompatActivity {
 
                 people_list.addValueEventListener(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
-                        if (dataSnapshot == null) {
-                            return;
-                        }
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
                         for (DataSnapshot child : dataSnapshot.getChildren()) {
 
                             if (child != null) {
 
                                 //Make sure to not be able to friend oneself
-                                if (!child.getKey().equals(usernameID)) {
-                                    arr1.add((String) child.getValue().toString());
-                                    arr4.add((String) child.getKey());
-                                } else if (arr1 == null || arr1.size() == 0) {
-                                    return;
+                                if (!Objects.equals(child.getKey(), usernameID)) {
+
+                                    for (DataSnapshot child1 : child.getChildren()) {
+
+                                        if (!Objects.equals(child1.getKey(), "Requests") && !Objects.equals(child1.getKey(), "Requested") && !Objects.equals(child.getKey(), "Friends")) {
+
+                                            arr1.add(Objects.requireNonNull(child1.getValue()).toString());
+
+                                        }
+
+                                    }
+                                    arr4.add(child.getKey());
                                 }
                             }
                         }
-                        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                        ArrayAdapter<String> adapter = new ArrayAdapter<>(
                                 getApplicationContext(), android.R.layout.simple_spinner_item, spinnerArray);
 
                         if (arr1.size() > adapter.getCount()) {
 
-                            for (String s : arr1) {
-                                spinnerArray.add(s);
-                            }
+                            spinnerArray.addAll(arr1);
                             //Sort the spinnerArray values from highest scaled trust level
                             //to lowest scaled trust level
                             if (arr5.size() != 0) {
@@ -579,22 +589,22 @@ public class MainLobby extends AppCompatActivity {
                             }
 
                             adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                            ListView PeopleList = (ListView) findViewById(R.id.ItemList);
+                            ListView PeopleList = findViewById(R.id.ItemList);
                             adapter.notifyDataSetChanged();
                             PeopleList.setAdapter(adapter);
-                            arr1 = new ArrayList<String>();
-                            arr4 = new ArrayList<String>();
-                            arr5 = new ArrayList<Float>();
+                            arr1 = new ArrayList<>();
+                            arr4 = new ArrayList<>();
+                            arr5 = new ArrayList<>();
                         }
 
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
                         System.out.println("The read failed: " + databaseError.getCode());
                     }
                 });
-                handler.post(this);
+                handler.postDelayed(this, 2000);
             }
         });
 
@@ -609,52 +619,22 @@ public class MainLobby extends AppCompatActivity {
             @Override
             public void run() {
 
-                mDatabase.addValueEventListener(new ValueEventListener() {
-                    @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                CustomModelDownloadConditions conditions = new CustomModelDownloadConditions.Builder()
+                        .requireWifi()  // Also possible: .requireCharging() and .requireDeviceIdle()
+                        .build();
+                FirebaseModelDownloader.getInstance()
+                        .getModel("GenuineTrustPredictor", DownloadType.LOCAL_MODEL_UPDATE_IN_BACKGROUND, conditions)
+                        .addOnSuccessListener(new OnSuccessListener<CustomModel>() {
+                            @Override
+                            public void onSuccess(CustomModel model) {
+                                File modelFile = model.getFile();
+                                if (modelFile != null) {
+                                    module = new Interpreter(modelFile);
+                                }
+                            }
+                        });
+                handler.postDelayed(this, 2000);
 
-                        if (dataSnapshot.getValue() == null) {
-                            return;
-                        }
-                        Dictionary<String, Integer> dict = (Dictionary<String, Integer>) dataSnapshot.getValue();
-                        //Text of the Document
-                        String textToWrite = "bla bla bla";
-
-                        //Checking the availability state of the External Storage.
-                        String state = Environment.getExternalStorageState();
-                        if (!Environment.MEDIA_MOUNTED.equals(state)) {
-
-                            //If it isn't mounted - we can't write into it.
-                            return;
-                        }
-
-                        //Create a new file that points to the root directory, with the given name:
-                        File file = new File(getExternalFilesDir(null), "GenuineTrustPredictor.ptl");
-
-                        //This point and below is responsible for the write operation
-                        FileOutputStream outputStream = null;
-                        try {
-                            file.createNewFile();
-                            //second argument of FileOutputStream constructor indicates whether
-                            //to append or create new file if one exists
-                            outputStream = new FileOutputStream(file, true);
-                            //Create a ptl file:
-                            outputStream.write(dict.toString().getBytes());
-                            outputStream.flush();
-                            outputStream.close();
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                        module = Module.load("GenuineTrustPredictor.ptl");
-                        //Extract the best performing model, and use it!
-                    }
-
-                    @Override
-                    public void onCancelled(DatabaseError databaseError) {
-                        System.out.println("The read failed: " + databaseError.getCode());
-                    }
-                });
-                handler.post(this);
             }
         });
 
@@ -675,7 +655,7 @@ public class MainLobby extends AppCompatActivity {
                         new ValueEventListener() {
 
                             @Override
-                            public void onDataChange(DataSnapshot dataSnapshot) {
+                            public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                                 if (dataSnapshot.getValue() == null) {
                                     return;
@@ -684,7 +664,7 @@ public class MainLobby extends AppCompatActivity {
                             }
 
                             @Override
-                            public void onCancelled(DatabaseError databaseError) {
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
                                 System.out.println("The read failed: " + databaseError.getCode());
                             }
                         });
@@ -714,7 +694,7 @@ public class MainLobby extends AppCompatActivity {
                         }
                         //Now scale the value...
                         float scaled_trust = trust_level - max_trust_value / MAX_VALUE;
-                        mDatabase2.child("Scaled Trust:").child(snapshot.getKey()).setValue(scaled_trust);
+                        mDatabase2.child("Scaled Trust:").child(Objects.requireNonNull(snapshot.getKey())).setValue(scaled_trust);
                     }
 
                     @Override
@@ -728,11 +708,11 @@ public class MainLobby extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
                         System.out.println("The read failed: " + databaseError.getCode());
                     }
                 });
-                handler.post(this);
+                handler.postDelayed(this, 2000);
             }
         });
 
@@ -749,7 +729,7 @@ public class MainLobby extends AppCompatActivity {
 
                 mDatabase.addValueEventListener(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                         if (dataSnapshot.getValue() == null) {
                             return;
@@ -759,11 +739,11 @@ public class MainLobby extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
                         System.out.println("The read failed: " + databaseError.getCode());
                     }
                 });
-                handler.post(this);
+                handler.postDelayed(this, 2000);
             }
         });
 
@@ -772,39 +752,67 @@ public class MainLobby extends AppCompatActivity {
     public void listen_for_requests() {
         FirebaseAuth mAuth = FirebaseAuth.getInstance();
         mAuth.signInAnonymously()
-                .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
-                    @Override
-                    public void onComplete(@NonNull Task<AuthResult> task) {
-                        if (task.isSuccessful()) {
-                            // Sign in success, update UI with the signed-in user's information
-                            Log.d(TAG, "signInAnonymously:success");
+                .addOnCompleteListener(this, task -> {
+                    if (task.isSuccessful()) {
+                        // Sign in success, update UI with the signed-in user's information
+                        Log.d(TAG, "signInAnonymously:success");
 
-                            FirebaseUser user = mAuth.getCurrentUser();
-
-                        } else {
-                            // If sign in fails, display a message to the user.
-                            Log.w(TAG, "signInAnonymously:failure", task.getException());
-                            Toast.makeText(MainLobby.this, "Authentication failed.",
-                                    Toast.LENGTH_SHORT).show();
-                        }
+                    } else {
+                        // If sign in fails, display a message to the user.
+                        Log.w(TAG, "signInAnonymously:failure", task.getException());
+                        Toast.makeText(MainLobby.this, "Authentication failed.",
+                                Toast.LENGTH_SHORT).show();
                     }
                 });
         FirebaseUser user = mAuth.getCurrentUser();
         if (user != null) {
             usernameID = user.getUid();
-            DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference();
         }
         DatabaseReference mDatabase = FirebaseDatabase.getInstance().getReference().child("Users").child(usernameID).child("Requests");
         DatabaseReference mDatabase2 = FirebaseDatabase.getInstance().getReference().child("Users").child(usernameID).child("Requested");
         final Handler handler = new Handler();
         String[] request_sent1 = {""};
+        final boolean[] status = {true};
         handler.post(new Runnable() {
             @Override
             public void run() {
 
+                mDatabase2.addValueEventListener(new ValueEventListener() {
+                    @Override
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
+
+                        if (dataSnapshot.getValue() == null) {
+                            return;
+                        } else if (request_sentID != null) {
+
+                            if (request_sentID.equals(dataSnapshot.getValue().toString())) {
+                                status[0] = false;
+                                return;
+
+                            }
+                        }
+
+                        request_sentID = dataSnapshot.getValue().toString();
+
+                        arr7.add(request_sentID);
+
+                    }
+
+                    @Override
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
+                        System.out.println("The read failed: " + databaseError.getCode());
+                    }
+                });
+
+                handler.postDelayed(this, 2000);
+
+                if (!status[0]) {
+                    return;
+                }
+
                 mDatabase.addValueEventListener(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
                         if (dataSnapshot.getValue() == null) {
                             return;
@@ -812,16 +820,14 @@ public class MainLobby extends AppCompatActivity {
 
                         request_sent1[0] = dataSnapshot.getValue().toString();
                         request_sent = request_sent1[0];
-                        MediaPlayer notif = MediaPlayer.create(getApplicationContext(), R.raw.notification);
-                        notif.start();
-                        if (!notif.isPlaying()) {
-                            notif.release();
-                        }
+                        sound = MediaPlayer.create(getApplicationContext(), R.raw.notification);
+                        sound.setOnCompletionListener(MediaPlayer::release);
+                        sound.start();
                         ListView listview_ = findViewById(R.id.ItemList3);
                         matching = p.matcher(request_sent);
                         String who = getName(request_sent, 7);
                         arr8.add(who);
-                        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                        ArrayAdapter<String> adapter = new ArrayAdapter<>(
                                 MainLobby.this, android.R.layout.simple_spinner_item, arr8);
                         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
                         adapter.notifyDataSetChanged();
@@ -831,11 +837,12 @@ public class MainLobby extends AppCompatActivity {
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
                         System.out.println("The read failed: " + databaseError.getCode());
                     }
                 });
-                handler.post(this);
+
+                handler.postDelayed(this, 2000);
             }
         });
     }
@@ -852,24 +859,21 @@ public class MainLobby extends AppCompatActivity {
 
                 mDatabase.addValueEventListener(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                        if (dataSnapshot == null || dataSnapshot.getValue() == null) {
+                        if (dataSnapshot.getValue() == null) {
                             return;
                         }
                         request_sent1[0] = dataSnapshot.getValue().toString();
-                        TextView display = findViewById(R.id.textView);
-                        display.setVisibility(VISIBLE);
-                        display.setText("Your request to friend " + request_sent1[0] + " was rejected.");
 
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
                         System.out.println("The read failed: " + databaseError.getCode());
                     }
                 });
-                handler.post(this);
+                handler.postDelayed(this, 2000);
             }
         });
 
@@ -882,20 +886,19 @@ public class MainLobby extends AppCompatActivity {
                 .child("Friends");
 
         final Handler handler = new Handler();
-        String[] request_sent1 = {""};
         DatabaseReference trust_list = FirebaseDatabase.getInstance().getReference().child("Scaled Trust:");
         handler.post(new Runnable() {
             @Override
             public void run() {
                 mDatabase.addValueEventListener(new ValueEventListener() {
                     @Override
-                    public void onDataChange(DataSnapshot dataSnapshot) {
+                    public void onDataChange(@NonNull DataSnapshot dataSnapshot) {
 
-                        if (dataSnapshot == null || dataSnapshot.getValue() == null) {
+                        if (dataSnapshot.getValue() == null) {
                             return;
                         }
                         for (DataSnapshot dS : dataSnapshot.getChildren()) {
-                            arr2.add((String) dS.getKey());
+                            arr2.add(dS.getKey());
                             arr3.add((String) dS.getValue());
                         }
 
@@ -903,9 +906,7 @@ public class MainLobby extends AppCompatActivity {
                             return;
                         }
 
-                        for (String s : arr2) {
-                            spinnerArray2.add(s);
-                        }
+                        spinnerArray2.addAll(arr2);
 
                         trust_list.addChildEventListener(new ChildEventListener() {
 
@@ -919,10 +920,7 @@ public class MainLobby extends AppCompatActivity {
                             public void onChildChanged(@NonNull DataSnapshot snapshot, @Nullable String previousChildName) {
 
                                 //In this case, a child has changed
-                                if (snapshot.getValue() == null) {
-                                    return;
-                                }
-                                Float scaled_value = (Float) snapshot.getValue();
+                                snapshot.getValue();
                                 //Make sure this individual is amongst your friends list...
                             }
 
@@ -937,7 +935,7 @@ public class MainLobby extends AppCompatActivity {
                             }
 
                             @Override
-                            public void onCancelled(DatabaseError databaseError) {
+                            public void onCancelled(@NonNull DatabaseError databaseError) {
                                 System.out.println("The read failed: " + databaseError.getCode());
                             }
 
@@ -947,22 +945,22 @@ public class MainLobby extends AppCompatActivity {
                             spinnerArray.sort(Comparator.comparingInt(arr6::indexOf));
                         }
 
-                        ArrayAdapter<String> adapter = new ArrayAdapter<String>(
+                        ArrayAdapter<String> adapter = new ArrayAdapter<>(
                                 MainLobby.this, android.R.layout.simple_spinner_item, spinnerArray2);
                         adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
-                        ListView PeopleList = (ListView) findViewById(R.id.ItemList2);
+                        ListView PeopleList = findViewById(R.id.ItemList2);
                         PeopleList.setAdapter(adapter);
-                        arr2 = new ArrayList<String>();
-                        spinnerArray2 = new ArrayList<String>();
+                        arr2 = new ArrayList<>();
+                        spinnerArray2 = new ArrayList<>();
 
                     }
 
                     @Override
-                    public void onCancelled(DatabaseError databaseError) {
+                    public void onCancelled(@NonNull DatabaseError databaseError) {
                         System.out.println("The read failed: " + databaseError.getCode());
                     }
                 });
-                handler.post(this);
+                handler.postDelayed(this, 2000);
 
             }
         });
